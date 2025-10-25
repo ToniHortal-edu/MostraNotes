@@ -201,8 +201,26 @@
             background: white;
         }
 
+        .grade-red {
+            background: #ffcccc !important;
+            color: #8b0000;
+        }
+
+        .grade-green {
+            background: #ccffcc !important;
+            color: #006400;
+        }
+
         tr:hover td {
             background: #e9ecef !important;
+        }
+
+        tr:hover td.grade-red {
+            background: #ffb3b3 !important;
+        }
+
+        tr:hover td.grade-green {
+            background: #b3ffb3 !important;
         }
 
         .task-header {
@@ -235,7 +253,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Consulta de Notes</h1>
+            <h1>Sistema de Consulta de Notes</h1>
             <p>Plataforma per a la visualització de qualificacions acadèmiques</p>
         </div>
 
@@ -275,7 +293,7 @@
     <script>
         // IMPORTANT: Substituïu aquesta URL per la URL del vostre Google Apps Script
         // La URL té el format: https://script.google.com/macros/s/XXXXXXXXXX/exec
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_EieyB9IpbPn6tWHappa_w6QNvEHoXurg65u2Y9erk4-uQ87AwoSLGflrdpP8DaR-4w/exec';
+        const SCRIPT_URL = 'LA_VOSTRA_URL_DEL_SCRIPT_AQUI';
         
         let studentsData = [];
 
@@ -293,7 +311,7 @@
         async function loadData() {
             try {
                 // Verificar que s'hagi configurat la URL
-                if (SCRIPT_URL === '') {
+                if (SCRIPT_URL === 'LA_VOSTRA_URL_DEL_SCRIPT_AQUI') {
                     throw new Error('Cal configurar la URL del Google Apps Script en el codi HTML');
                 }
 
@@ -355,10 +373,63 @@
             }
         });
 
+        // Formatar nota amb arrodoniment a 1 decimal si és numèric
+        function formatGrade(grade) {
+            // Si és '-' o està buit, retornar tal qual
+            if (grade === '-' || grade === '' || grade === null || grade === undefined) {
+                return grade || '-';
+            }
+            
+            // Intentar convertir a número
+            const numericValue = parseFloat(grade);
+            
+            // Si és un número vàlid
+            if (!isNaN(numericValue)) {
+                // Arrodonir a 1 decimal
+                const rounded = Math.round(numericValue * 10) / 10;
+                
+                // Si és un valor enter (sense decimals), mostrar sense .0
+                if (rounded === Math.floor(rounded)) {
+                    return rounded.toString();
+                } else {
+                    // Si té decimals, mostrar amb 1 decimal
+                    return rounded.toFixed(1);
+                }
+            }
+            
+            // Si no és un número, retornar tal qual (per textos com "NP", "Exempt", etc.)
+            return grade;
+        }
+
+        // Determinar classe CSS per color de fons segons valor i índex de columna
+        function getGradeColorClass(grade, gradeIndex) {
+            // Intentar convertir a número
+            const numericValue = parseFloat(grade);
+            
+            // Si no és un número vàlid, no aplicar colors
+            if (isNaN(numericValue)) {
+                return '';
+            }
+            
+            // Les columnes E, G, I corresponen als índexs 0, 2, 4 dins de l'array de grades
+            // E és la primera columna de notes (índex 0)
+            // G és la tercera columna de notes (índex 2)
+            // I és la cinquena columna de notes (índex 4)
+            const specialColumns = [0, 2, 4]; // E, G, I
+            
+            if (specialColumns.includes(gradeIndex)) {
+                // Regla especial per columnes E, G, I: < 5 = vermell, >= 5 = verd
+                return numericValue < 5 ? 'grade-red' : 'grade-green';
+            } else {
+                // Regla general: < 50 = vermell, >= 50 = verd
+                return numericValue < 50 ? 'grade-red' : 'grade-green';
+            }
+        }
+
         // Mostrar notes de l'alumne
         function showStudentNotes(student) {
             studentInfo.innerHTML = `
-                <h2>Hola, ${student.firstName} ${student.lastName}</h2>
+                <h2>Benvingut/da, ${student.firstName} ${student.lastName}</h2>
                 <p><strong>Correu electrònic:</strong> ${student.email}</p>
             `;
 
@@ -381,10 +452,12 @@
             
             tableHTML += '</thead><tbody>';
             
-            // FILA 3: Notes
+            // FILA 3: Notes (amb format numèric i colors condicionals)
             tableHTML += '<tr>';
-            student.grades.forEach(grade => {
-                tableHTML += `<td>${grade.grade}</td>`;
+            student.grades.forEach((grade, index) => {
+                const formattedGrade = formatGrade(grade.grade);
+                const colorClass = getGradeColorClass(grade.grade, index);
+                tableHTML += `<td class="${colorClass}">${formattedGrade}</td>`;
             });
             tableHTML += '</tr>';
             
