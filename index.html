@@ -185,10 +185,14 @@
 
         .category-header {
             background: #4c51bf !important;
-            font-size: 1em;
+            font-size: 0.95em;
             font-weight: bold;
-            border-bottom: 3px solid white;
-            padding: 14px 12px;
+            padding: 12px 8px;
+            min-width: 80px;
+            max-width: 200px;
+            word-wrap: break-word;
+            white-space: normal;
+            vertical-align: middle;
         }
 
         tbody td {
@@ -202,12 +206,13 @@
         }
 
         .task-header {
+            background: #667eea;
             font-size: 0.85em;
             min-width: 80px;
             max-width: 200px;
             word-wrap: break-word;
             white-space: normal;
-            vertical-align: top;
+            vertical-align: middle;
             padding: 10px 8px;
         }
 
@@ -288,7 +293,7 @@
         async function loadData() {
             try {
                 // Verificar que s'hagi configurat la URL
-                if (SCRIPT_URL === 'LA_VOSTRA_URL_DEL_SCRIPT_AQUI') {
+                if (SCRIPT_URL === '') {
                     throw new Error('Cal configurar la URL del Google Apps Script en el codi HTML');
                 }
 
@@ -353,78 +358,38 @@
         // Mostrar notes de l'alumne
         function showStudentNotes(student) {
             studentInfo.innerHTML = `
-                <h2>Benvingut/da, ${student.firstName} ${student.lastName}</h2>
+                <h2>Hola, ${student.firstName} ${student.lastName}</h2>
                 <p><strong>Correu electrònic:</strong> ${student.email}</p>
             `;
 
-            // Crear estructura de capçaleres jeràrquiques
-            const headerStructure = buildHeaderStructure(student.grades);
-            
-            // Crear taula amb dues files de capçaleres
+            // Crear taula amb 3 files: categoria, tasca, nota
             let tableHTML = '<thead>';
             
             // FILA 1: Categories (línia 1 del Google Sheet)
             tableHTML += '<tr>';
-            headerStructure.categories.forEach(cat => {
-                if (cat.category) {
-                    tableHTML += `<th colspan="${cat.colspan}" class="category-header">${cat.category}</th>`;
-                } else {
-                    tableHTML += `<th colspan="${cat.colspan}" class="category-header"></th>`;
-                }
+            student.grades.forEach(grade => {
+                tableHTML += `<th class="category-header">${grade.category || ''}</th>`;
             });
             tableHTML += '</tr>';
             
             // FILA 2: Tasques (línia 2 del Google Sheet)
             tableHTML += '<tr>';
             student.grades.forEach(grade => {
-                const taskLabel = grade.task || '';
-                tableHTML += `<th class="task-header">${taskLabel}</th>`;
+                tableHTML += `<th class="task-header">${grade.task || ''}</th>`;
             });
             tableHTML += '</tr>';
             
-            tableHTML += '</thead><tbody><tr>';
+            tableHTML += '</thead><tbody>';
             
-            // Afegir notes
+            // FILA 3: Notes
+            tableHTML += '<tr>';
             student.grades.forEach(grade => {
                 tableHTML += `<td>${grade.grade}</td>`;
             });
+            tableHTML += '</tr>';
             
-            tableHTML += '</tr></tbody>';
+            tableHTML += '</tbody>';
             notesTable.innerHTML = tableHTML;
-        }
-
-        // Construir estructura de capçaleres agrupades per categoria
-        function buildHeaderStructure(grades) {
-            const categories = [];
-            let currentCategory = null;
-            let colspan = 0;
-            
-            grades.forEach((grade, index) => {
-                if (currentCategory === null || currentCategory !== grade.category) {
-                    // Nova categoria
-                    if (currentCategory !== null) {
-                        categories.push({
-                            category: currentCategory,
-                            colspan: colspan
-                        });
-                    }
-                    currentCategory = grade.category;
-                    colspan = 1;
-                } else {
-                    // Mateixa categoria
-                    colspan++;
-                }
-                
-                // Última iteració
-                if (index === grades.length - 1) {
-                    categories.push({
-                        category: currentCategory,
-                        colspan: colspan
-                    });
-                }
-            });
-            
-            return { categories: categories };
         }
 
         // Tancar sessió
