@@ -172,6 +172,7 @@
             padding: 12px;
             text-align: center;
             border: 1px solid #ddd;
+            vertical-align: middle;
         }
 
         th {
@@ -182,18 +183,32 @@
             top: 0;
         }
 
-        tr:nth-child(even) {
-            background: #f8f9fa;
+        .category-header {
+            background: #4c51bf !important;
+            font-size: 1em;
+            font-weight: bold;
+            border-bottom: 3px solid white;
+            padding: 14px 12px;
         }
 
-        tr:hover {
-            background: #e9ecef;
+        tbody td {
+            font-weight: 600;
+            font-size: 1.1em;
+            background: white;
+        }
+
+        tr:hover td {
+            background: #e9ecef !important;
         }
 
         .task-header {
-            font-size: 0.9em;
-            max-width: 150px;
+            font-size: 0.85em;
+            min-width: 80px;
+            max-width: 200px;
             word-wrap: break-word;
+            white-space: normal;
+            vertical-align: top;
+            padding: 10px 8px;
         }
 
         @media (max-width: 768px) {
@@ -253,7 +268,9 @@
     </div>
 
     <script>
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRkUTs0tcXwiOahptxsmj-BvQBiMzArj9FGvvpORbIrGG1wfI3-qM1m2wAMMM1PxfzE_-tmnreyMTzv/pub?gid=163202838&single=true&output=csv';
+        // IMPORTANT: Substituïu aquesta URL per la URL del vostre Google Apps Script
+        // La URL té el format: https://script.google.com/macros/s/XXXXXXXXXX/exec
+        const SCRIPT_URL = 'https://script.google.com/a/macros/iesterrassa.cat/s/AKfycbzqU8duesWzmJzgh3wNym4LcBBf4LT0pq_AiLapTYutMuVtlksh9028CoWvPG-x5VDPSw/exec';
         
         let studentsData = [];
 
@@ -267,137 +284,52 @@
         const notesTable = document.getElementById('notesTable');
         const logoutBtn = document.getElementById('logoutBtn');
 
-        // Funció per convertir lletra de columna a índex
-        function columnToIndex(column) {
-            let index = 0;
-            for (let i = 0; i < column.length; i++) {
-                index = index * 26 + (column.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
-            }
-            return index - 1;
-        }
-
-        // Funció per parsejar CSV
-        function parseCSV(text) {
-            const rows = [];
-            let currentRow = [];
-            let currentField = '';
-            let insideQuotes = false;
-
-            for (let i = 0; i < text.length; i++) {
-                const char = text[i];
-                const nextChar = text[i + 1];
-
-                if (char === '"') {
-                    if (insideQuotes && nextChar === '"') {
-                        currentField += '"';
-                        i++;
-                    } else {
-                        insideQuotes = !insideQuotes;
-                    }
-                } else if (char === ',' && !insideQuotes) {
-                    currentRow.push(currentField);
-                    currentField = '';
-                } else if ((char === '\n' || char === '\r') && !insideQuotes) {
-                    if (char === '\r' && nextChar === '\n') {
-                        i++;
-                    }
-                    if (currentField || currentRow.length > 0) {
-                        currentRow.push(currentField);
-                        rows.push(currentRow);
-                        currentRow = [];
-                        currentField = '';
-                    }
-                } else {
-                    currentField += char;
-                }
-            }
-
-            if (currentField || currentRow.length > 0) {
-                currentRow.push(currentField);
-                rows.push(currentRow);
-            }
-
-            return rows;
-        }
-
-        // Carregar dades del CSV
+        // Carregar dades del Google Apps Script
         async function loadData() {
             try {
-                const response = await fetch(CSV_URL);
-                if (!response.ok) {
-                    throw new Error('No s\'han pogut carregar les dades');
+                // Verificar que s'hagi configurat la URL
+                if (SCRIPT_URL === 'LA_VOSTRA_URL_DEL_SCRIPT_AQUI') {
+                    throw new Error('Cal configurar la URL del Google Apps Script en el codi HTML');
                 }
-                const csvText = await response.text();
-                const data = parseCSV(csvText);
-                processData(data);
+
+                const response = await fetch(SCRIPT_URL);
+                
+                if (!response.ok) {
+                    throw new Error('No s\'han pogut carregar les dades del servidor');
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Error desconegut');
+                }
+                
+                studentsData = result.data;
+                
+                if (studentsData.length === 0) {
+                    throw new Error('No s\'han trobat dades d\'alumnes al full de càlcul');
+                }
+                
+                console.log(`Carregats ${studentsData.length} alumnes correctament`);
                 
                 loadingSection.style.display = 'none';
                 loginSection.classList.add('active');
+                
             } catch (error) {
                 loadingSection.innerHTML = `
                     <div class="error-message">
-                        Error en carregar les dades: ${error.message}<br>
-                        Si us plau, comproveu que el Google Sheet estigui publicat correctament.
+                        <strong>Error en carregar les dades:</strong><br>
+                        ${error.message}<br><br>
+                        <small>Si us plau, comproveu que:
+                        <ul style="text-align: left; margin-top: 10px;">
+                            <li>El Google Apps Script estigui desplegat correctament</li>
+                            <li>La URL del script estigui configurada en el fitxer HTML</li>
+                            <li>El Google Sheet contingui dades vàlides</li>
+                        </ul>
+                        </small>
                     </div>
                 `;
             }
-        }
-
-        // Processar dades del CSV
-        function processData(data) {
-            studentsData = [];
-            
-            // Índexs de columnes
-            const emailCol = columnToIndex('BK');
-            const passwordCol = columnToIndex('BL');
-            const firstNameCol = 0; // Columna A
-            const lastNameCol = 1; // Columna B
-            const firstGradeCol = columnToIndex('E');
-            const lastGradeCol = columnToIndex('AI');
-
-            // Obtenir referències de tasques (files 1 i 2, índexs 0 i 1)
-            const taskReferences = [];
-            for (let col = firstGradeCol; col <= lastGradeCol; col++) {
-                const ref1 = data[0] && data[0][col] ? data[0][col].trim() : '';
-                const ref2 = data[1] && data[1][col] ? data[1][col].trim() : '';
-                const taskRef = ref1 && ref2 ? `${ref1} - ${ref2}` : (ref1 || ref2 || `Tasca ${col - firstGradeCol + 1}`);
-                taskReferences.push(taskRef);
-            }
-
-            // Processar cada alumne (començant a la fila 3, índex 2)
-            for (let row = 2; row < data.length; row++) {
-                const rowData = data[row];
-                if (!rowData || !rowData[emailCol] || !rowData[passwordCol]) continue;
-
-                const email = rowData[emailCol].trim();
-                const password = rowData[passwordCol].trim();
-                
-                if (!email || !password) continue;
-
-                const student = {
-                    firstName: rowData[firstNameCol] ? rowData[firstNameCol].trim() : '',
-                    lastName: rowData[lastNameCol] ? rowData[lastNameCol].trim() : '',
-                    email: email,
-                    password: password,
-                    grades: []
-                };
-
-                // Obtenir notes
-                for (let col = firstGradeCol; col <= lastGradeCol; col++) {
-                    const gradeValue = rowData[col] !== undefined && rowData[col] !== null && rowData[col].toString().trim() !== '' 
-                        ? rowData[col].toString().trim() 
-                        : '-';
-                    
-                    student.grades.push({
-                        task: taskReferences[col - firstGradeCol],
-                        grade: gradeValue
-                    });
-                }
-
-                studentsData.push(student);
-            }
-
-            console.log(`Carregats ${studentsData.length} alumnes`);
         }
 
         // Login
@@ -425,14 +357,74 @@
                 <p><strong>Correu electrònic:</strong> ${student.email}</p>
             `;
 
-            let tableHTML = '<thead><tr><th>Tasca</th><th>Qualificació</th></tr></thead><tbody>';
+            // Crear estructura de capçaleres jeràrquiques
+            const headerStructure = buildHeaderStructure(student.grades);
             
+            // Crear taula amb dues files de capçaleres
+            let tableHTML = '<thead>';
+            
+            // FILA 1: Categories (línia 1 del Google Sheet)
+            tableHTML += '<tr>';
+            headerStructure.categories.forEach(cat => {
+                if (cat.category) {
+                    tableHTML += `<th colspan="${cat.colspan}" class="category-header">${cat.category}</th>`;
+                } else {
+                    tableHTML += `<th colspan="${cat.colspan}" class="category-header"></th>`;
+                }
+            });
+            tableHTML += '</tr>';
+            
+            // FILA 2: Tasques (línia 2 del Google Sheet)
+            tableHTML += '<tr>';
             student.grades.forEach(grade => {
-                tableHTML += `<tr><td class="task-header">${grade.task}</td><td>${grade.grade}</td></tr>`;
+                const taskLabel = grade.task || '';
+                tableHTML += `<th class="task-header">${taskLabel}</th>`;
+            });
+            tableHTML += '</tr>';
+            
+            tableHTML += '</thead><tbody><tr>';
+            
+            // Afegir notes
+            student.grades.forEach(grade => {
+                tableHTML += `<td>${grade.grade}</td>`;
             });
             
-            tableHTML += '</tbody>';
+            tableHTML += '</tr></tbody>';
             notesTable.innerHTML = tableHTML;
+        }
+
+        // Construir estructura de capçaleres agrupades per categoria
+        function buildHeaderStructure(grades) {
+            const categories = [];
+            let currentCategory = null;
+            let colspan = 0;
+            
+            grades.forEach((grade, index) => {
+                if (currentCategory === null || currentCategory !== grade.category) {
+                    // Nova categoria
+                    if (currentCategory !== null) {
+                        categories.push({
+                            category: currentCategory,
+                            colspan: colspan
+                        });
+                    }
+                    currentCategory = grade.category;
+                    colspan = 1;
+                } else {
+                    // Mateixa categoria
+                    colspan++;
+                }
+                
+                // Última iteració
+                if (index === grades.length - 1) {
+                    categories.push({
+                        category: currentCategory,
+                        colspan: colspan
+                    });
+                }
+            });
+            
+            return { categories: categories };
         }
 
         // Tancar sessió
