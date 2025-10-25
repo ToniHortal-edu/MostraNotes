@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Notes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 1200px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .login-section, .notes-section {
+            display: none;
+        }
+
+        .login-section.active, .notes-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+
+        .student-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .student-info h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .student-info p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tr:hover {
+            background: #e9ecef;
+        }
+
+        .task-header {
+            font-size: 0.9em;
+            max-width: 150px;
+            word-wrap: break-word;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            th, td {
+                padding: 8px;
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Sistema de Consulta de Notes</h1>
+            <p>Plataforma per a la visualització de qualificacions acadèmiques</p>
+        </div>
+
+        <!-- Secció de càrrega -->
+        <div class="loading" id="loadingSection">
+            <div class="loading-spinner"></div>
+            <p>Carregant dades...</p>
+        </div>
+
+        <!-- Secció de login -->
+        <div class="login-section" id="loginSection">
+            <h2 style="margin-bottom: 20px; color: #333;">Accés a les notes</h2>
+            <div id="loginError"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Correu electrònic:</label>
+                    <input type="email" id="email" required placeholder="alumne@exemple.cat">
+                </div>
+                <div class="form-group">
+                    <label for="password">Contrasenya:</label>
+                    <input type="password" id="password" required placeholder="Introdueix la teva contrasenya">
+                </div>
+                <button type="submit" class="btn">Iniciar sessió</button>
+            </form>
+        </div>
+
+        <!-- Secció de notes -->
+        <div class="notes-section" id="notesSection">
+            <div class="student-info" id="studentInfo"></div>
+            <button class="btn btn-secondary" id="logoutBtn">Tancar sessió</button>
+            <div class="table-container">
+                <table id="notesTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRkUTs0tcXwiOahptxsmj-BvQBiMzArj9FGvvpORbIrGG1wfI3-qM1m2wAMMM1PxfzE_-tmnreyMTzv/pub?gid=163202838&single=true&output=csv';
+        
+        let studentsData = [];
+
+        // Elements del DOM
+        const loadingSection = document.getElementById('loadingSection');
+        const loginSection = document.getElementById('loginSection');
+        const notesSection = document.getElementById('notesSection');
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+        const studentInfo = document.getElementById('studentInfo');
+        const notesTable = document.getElementById('notesTable');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        // Funció per convertir lletra de columna a índex
+        function columnToIndex(column) {
+            let index = 0;
+            for (let i = 0; i < column.length; i++) {
+                index = index * 26 + (column.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
+            }
+            return index - 1;
+        }
+
+        // Funció per parsejar CSV
+        function parseCSV(text) {
+            const rows = [];
+            let currentRow = [];
+            let currentField = '';
+            let insideQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+
+                if (char === '"') {
+                    if (insideQuotes && nextChar === '"') {
+                        currentField += '"';
+                        i++;
+                    } else {
+                        insideQuotes = !insideQuotes;
+                    }
+                } else if (char === ',' && !insideQuotes) {
+                    currentRow.push(currentField);
+                    currentField = '';
+                } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+                    if (char === '\r' && nextChar === '\n') {
+                        i++;
+                    }
+                    if (currentField || currentRow.length > 0) {
+                        currentRow.push(currentField);
+                        rows.push(currentRow);
+                        currentRow = [];
+                        currentField = '';
+                    }
+                } else {
+                    currentField += char;
+                }
+            }
+
+            if (currentField || currentRow.length > 0) {
+                currentRow.push(currentField);
+                rows.push(currentRow);
+            }
+
+            return rows;
+        }
+
+        // Carregar dades del CSV
+        async function loadData() {
+            try {
+                const response = await fetch(CSV_URL);
+                if (!response.ok) {
+                    throw new Error('No s\'han pogut carregar les dades');
+                }
+                const csvText = await response.text();
+                const data = parseCSV(csvText);
+                processData(data);
+                
+                loadingSection.style.display = 'none';
+                loginSection.classList.add('active');
+            } catch (error) {
+                loadingSection.innerHTML = `
+                    <div class="error-message">
+                        Error en carregar les dades: ${error.message}<br>
+                        Si us plau, comproveu que el Google Sheet estigui publicat correctament.
+                    </div>
+                `;
+            }
+        }
+
+        // Processar dades del CSV
+        function processData(data) {
+            studentsData = [];
+            
+            // Índexs de columnes
+            const emailCol = columnToIndex('BK');
+            const passwordCol = columnToIndex('BL');
+            const firstNameCol = 0; // Columna A
+            const lastNameCol = 1; // Columna B
+            const firstGradeCol = columnToIndex('E');
+            const lastGradeCol = columnToIndex('AI');
+
+            // Obtenir referències de tasques (files 1 i 2, índexs 0 i 1)
+            const taskReferences = [];
+            for (let col = firstGradeCol; col <= lastGradeCol; col++) {
+                const ref1 = data[0] && data[0][col] ? data[0][col].trim() : '';
+                const ref2 = data[1] && data[1][col] ? data[1][col].trim() : '';
+                const taskRef = ref1 && ref2 ? `${ref1} - ${ref2}` : (ref1 || ref2 || `Tasca ${col - firstGradeCol + 1}`);
+                taskReferences.push(taskRef);
+            }
+
+            // Processar cada alumne (començant a la fila 3, índex 2)
+            for (let row = 2; row < data.length; row++) {
+                const rowData = data[row];
+                if (!rowData || !rowData[emailCol] || !rowData[passwordCol]) continue;
+
+                const email = rowData[emailCol].trim();
+                const password = rowData[passwordCol].trim();
+                
+                if (!email || !password) continue;
+
+                const student = {
+                    firstName: rowData[firstNameCol] ? rowData[firstNameCol].trim() : '',
+                    lastName: rowData[lastNameCol] ? rowData[lastNameCol].trim() : '',
+                    email: email,
+                    password: password,
+                    grades: []
+                };
+
+                // Obtenir notes
+                for (let col = firstGradeCol; col <= lastGradeCol; col++) {
+                    const gradeValue = rowData[col] !== undefined && rowData[col] !== null && rowData[col].toString().trim() !== '' 
+                        ? rowData[col].toString().trim() 
+                        : '-';
+                    
+                    student.grades.push({
+                        task: taskReferences[col - firstGradeCol],
+                        grade: gradeValue
+                    });
+                }
+
+                studentsData.push(student);
+            }
+
+            console.log(`Carregats ${studentsData.length} alumnes`);
+        }
+
+        // Login
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            const student = studentsData.find(s => s.email === email && s.password === password);
+
+            if (student) {
+                showStudentNotes(student);
+                loginSection.classList.remove('active');
+                notesSection.classList.add('active');
+                loginError.innerHTML = '';
+            } else {
+                loginError.innerHTML = '<div class="error-message">Credencials incorrectes. Si us plau, comproveu el correu electrònic i la contrasenya.</div>';
+            }
+        });
+
+        // Mostrar notes de l'alumne
+        function showStudentNotes(student) {
+            studentInfo.innerHTML = `
+                <h2>Benvingut/da, ${student.firstName} ${student.lastName}</h2>
+                <p><strong>Correu electrònic:</strong> ${student.email}</p>
+            `;
+
+            let tableHTML = '<thead><tr><th>Tasca</th><th>Qualificació</th></tr></thead><tbody>';
+            
+            student.grades.forEach(grade => {
+                tableHTML += `<tr><td class="task-header">${grade.task}</td><td>${grade.grade}</td></tr>`;
+            });
+            
+            tableHTML += '</tbody>';
+            notesTable.innerHTML = tableHTML;
+        }
+
+        // Tancar sessió
+        logoutBtn.addEventListener('click', function() {
+            notesSection.classList.remove('active');
+            loginSection.classList.add('active');
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+            loginError.innerHTML = '';
+        });
+
+        // Carregar dades en iniciar
+        loadData();
+    </script>
+</body>
+</html>
